@@ -1,61 +1,101 @@
-# Kinetix
+# Kinetix AI Rehab Portal
 
 Kinetix is a fully functional Minimum Viable Product (MVP) built for rapid, modern post-operative rehabilitation tracking utilizing modern AI web elements. It is designed to seamlessly bridge the gap between patients recovering at home and the physicians monitoring their progress.
 
-## 🚀 Features Implemented So Far
+## 🚀 Features
 
-### 🔐 Full-Stack Architecture & Security (New!)
-Upgraded from a static prototype to a secure full-stack application leveraging **Supabase**:
-- **Role-Based Authentication:** Distinct login flows for Patients and Clinicians using `@supabase/supabase-js`. 
-- **Protected Routing:** Secure wrappers (`react-router-dom`) ensure users can only access their designated dashboards.
-- **Data Persistence:** Replaced mock state with live reads/writes to a PostgreSQL database.
-- **Row Level Security (RLS):** Strict database policies guarantee medical data privacy by isolating patient records.
+### 🔐 Authentication & Relational Security
+A secure full-stack application powered by **Supabase** with production-grade data isolation:
+- **Relational Architecture:** Distinct, deeply normalized Postgres tables for `doctors` and `patients` schema enforcing strict entity models.
+- **Clinician Self-Registration:** Doctors and Patients can register securely from a unified login page, which splits and routes payloads instantly to the correct schema.
+- **Protected Routing:** `ProtectedRoute` wrappers via `react-router-dom` ensure users can only access their designated dashboards.
+- **Row Level Security (RLS):** Strict database policies across all 8 migration phases guarantee medical data privacy. Clinicians can securely query all registered patients to initiate linkages, while patients remain completely isolated.
+- **Session Management:** Complex session toggling ensures RLS compliance while onboarding profiles entirely offline.
+
+### 🩺 Doctor Dashboard — Clinical Command Center
+The clinical interface provides immediate, actionable insights with full patient lifecycle management:
+
+- **Personalized Workspaces:** Dynamically fetches and operates natively using the physician's authenticated token and metadata.
+- **Live AI Clinical Synthesis Engine:** Instead of executing mock data, the system securely polls the last 7 days of actual patient `session_logs` activity, computationally tracks `painLevels` vs `weeklyReps`, and mathematically triggers a text-synthesis engine. This custom Doctor's Note is immediately pushed and synced into the patient's database layer.
+- **Multi-Protocol Assignment Array:** Visual exercise picker with Lucide icons allows the clinician to batch-select multiple therapies at once, seamlessly parsing a payload of `assigned_routines` and firing them off concurrently.
+- **B2B Patient Onboarding:**
+  - Creates a new patient auth account natively (`supabase.auth.signUp`).
+  - Stores their target `rehab_focus` into the secure `patients` schema.
+  - Establishes a `doctor_patient_links` relationship instantly.
+  - All seamlessly wrapped with automated background re-authentication.
+- **Link Existing Patient Module:** Direct `.ilike()` email database polling to dynamically join orphaned patients to active rosters without friction.
+- **Dynamic Roster Management:** Active / Completed tabs filtering patients by routine status.
 
 ### 🎯 Patient Dashboard
 The patient-facing side focuses on reducing friction, keeping users engaged, and capturing data effortlessly:
-- **Dynamic Task Queue:** Automatically fetches the "Today's Routine" protocols assigned directly by the physician.
+- **Good Morning Native Integration:** Syncs their true registered name securely into the main header.
+- **Doctor's Notes Portlet:** Exposes the Live AI Synthesis triggered strictly by their physician, projecting critical clinical notes securely onto their main view panel.
+- **Dynamic Task Queue:** Automatically fetches "Today's Routine" protocols assigned by the physician from `assigned_routines`.
 - **AI Vision Tracking:** Integrated Google MediaPipe (`@mediapipe/tasks-vision`) with the device webcam to track patient form and count repetitions in real-time.
-- **Hands-Free Voice Navigation:** Utilized `react-speech-recognition` to allow users to control their session hands-free via voice commands ("start workout").
-- **Gamification & Rewards:** Built-in daily rep goals, streak tracking, and visual rewards to keep patients motivated.
-
-### 🩺 Doctor Dashboard
-The clinical interface provides immediate, actionable insights and control:
-- **Protocol Assignment:** An elegant UI allowing clinicians to assign specific rehabilitation exercises directly to a patient's queue.
-- **AI Clinical Synthesis:** An automated reporting engine that processes raw patient data and generates a concise, natural-language clinical summary.
-- **Data Visualization:** Clean layout highlighting critical elements such as average pain across the week and sessions completed.
+- **Hands-Free Voice Navigation:** `react-speech-recognition` allows users to control their session hands-free via voice commands.
+- **Gamification & Rewards:** Daily rep goals and visual targets.
+- **Pain Reporting:** Interactive body pain map for patients to log discomfort levels per session.
 
 ### 🎨 Design & Architecture
-- **Tech Stack:** React 19, Vite, Supabase, React Router.
-- **UI/UX:** A deeply customized, ultra-premium dark theme employing glassmorphism and fluid micro-animations powered by `framer-motion`.
-- **Icons:** Integrated `lucide-react` for crisp vector iconography and deployed modern typography (`Space Grotesk`) to enhance the cutting-edge feel of the platform.
+- **Tech Stack:** React 19, Vite, Supabase (Auth + Postgres + RLS), React Router.
+- **UI/UX:** Ultra-premium dark theme with glassmorphism, fluid micro-animations (`framer-motion`), and cyan/purple gradient accents.
+- **Icons:** `lucide-react` for crisp vector iconography across all UI elements.
+- **Typography:** `Space Grotesk` for a cutting-edge clinical aesthetic.
+
+---
+
+## 🗄️ Database Schema
+
+### Core Tables
+| Table | Purpose |
+|-------|---------|
+| `doctors` | Specialized clinician entity schema — `id` (UUID), `full_name`, `email` |
+| `patients` | Specialized patient entity schema — `id` (UUID), `full_name`, `email`, `rehab_focus`, `clinical_summary` |
+| `exercises_dictionary` | Master exercise library — `id`, `name`, `target_reps`, `lucide_icon_name` |
+| `assigned_routines` | Doctor→Patient exercise assignments — `doctor_id`, `patient_id`, `exercise_id`, `status` (pending/completed) |
+| `doctor_patient_links` | Relational doctor↔patient mapping — `doctor_id`, `patient_id`, `UNIQUE` constraint |
+| `session_logs` | Deep analytic tracking — `patient_id`, `total_reps`, `pain_level` |
+
+---
 
 ## 🛠️ Getting Started
 
-To run the platform locally:
+### 1. Database Setup
+Execute the generated migration scripts strictly sequentially in your Supabase SQL Editor:
+```text
+0001_initial_schema.sql
+0002_doctor_patient_relations.sql
+... (ensure all 8 are run sequentially)
+0008_patient_clinical_summary.sql
+```
 
-1. **Database Setup:** 
-   Execute the `supabase/migrations/0001_initial_schema.sql` script into your Supabase SQL Editor.
-2. **Environment Variables:**
-   Create a `.env.local` file inside `frontend-react` and populate your keys:
-   ```env
-   VITE_SUPABASE_URL=your-supabase-url
-   VITE_SUPABASE_ANON_KEY=your-anon-key
-   ```
-3. **Run Application:**
-   Navigate into the frontend directory and start the server.
-   ```bash
-   cd frontend-react
-   npm install
-   npm run dev
-   ```
+### 2. Environment Variables
+Create a `.env.local` file inside `frontend-react/`:
+```env
+VITE_SUPABASE_URL=your-supabase-url
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
 
-## 📂 Project Structure
-- `/supabase/migrations/0001_initial_schema.sql` - Core DB architecture and RLS policies.
-- `/src/pages/Landing.jsx` & `Login.jsx` - Dual-role authentication flow.
-- `/src/pages/Dashboard.jsx` - The main Patient interface.
-- `/src/pages/DoctorDashboard.jsx` - The Clinician interface.
-- `/src/components/ProtectedRoute.jsx` - Route security and session verification.
-- `/src/components/RehabVision.jsx` - The core AI Camera component for rep tracking.
+### 3. Run Application
+```bash
+cd frontend-react
+npm install
+npm run dev
+```
+
+---
+
+## 📋 Development Phases Completed
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| **Phase 1** | Landing page, patient dashboard, AI vision tracking, gamification | ✅ Complete |
+| **Phase 2** | Supabase integration, auth flows, RLS policies, protected routing | ✅ Complete |
+| **Phase 3** | B2B patient onboarding — profile insert, routine assignment, Auth-Juggling | ✅ Complete |
+| **Phase 4** | Clinician registration, Active/Completed roster tabs, archive action | ✅ Complete |
+| **Phase 5** | `doctor_patient_links` relational table, Link Existing Patient module | ✅ Complete |
+| **Phase 6** | **Database Normalization**: Decoupling `profiles` into `doctors` & `patients` | ✅ Complete |
+| **Phase 7** | **Multi-Assignment & Live DB AI Synthesis**: Real session metrics piped to patient dashboard | ✅ Complete |
 
 ---
 *Built for the next generation of recovery.*

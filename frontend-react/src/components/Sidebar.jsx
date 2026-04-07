@@ -1,14 +1,66 @@
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Activity, LayoutDashboard, Stethoscope, HeartPulse } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 
 const navItems = [
-  { href: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/doctor", icon: Stethoscope, label: "Doctor View" },
+  { href: "/", icon: LayoutDashboard, label: "Patient View" },
+  { href: "/doctor", icon: Stethoscope, label: "Clinician View" },
 ];
 
 export default function Sidebar() {
   const location = useLocation();
   const pathname = location.pathname;
+
+  const [userName, setUserName] = useState("Loading...");
+  const [initials, setInitials] = useState("--");
+  const [userRole, setUserRole] = useState("");
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      const userId = session.user.id;
+      
+      // Determine role roughly by pathname, or check both
+      const isDoctorContext = pathname.includes('/doctor');
+      
+      // Try doctors table first if in doctor context
+      let foundName = null;
+      let foundRole = isDoctorContext ? "Clinician Role" : "Patient Role";
+
+      if (isDoctorContext) {
+         const { data: dData } = await supabase.from("doctors").select("full_name").eq("id", userId).maybeSingle();
+         if (dData?.full_name) foundName = dData.full_name;
+      }
+      
+      if (!foundName) {
+         // Fallback to patients table
+         const { data: pData } = await supabase.from("patients").select("full_name, rehab_focus").eq("id", userId).maybeSingle();
+         if (pData?.full_name) {
+           foundName = pData.full_name;
+           foundRole = pData.rehab_focus || "Active Rehabilitation";
+         }
+      }
+
+      if (foundName) {
+        setUserName(foundName);
+        const parts = foundName.split(" ");
+        if (parts.length >= 2) {
+          setInitials((parts[0][0] + parts[1][0]).toUpperCase());
+        } else {
+          setInitials(foundName.substring(0, 2).toUpperCase());
+        }
+      } else {
+        setUserName("Demo User");
+        setInitials("DU");
+      }
+      setUserRole(foundRole);
+    };
+
+    fetchUser();
+  }, [pathname]);
 
   return (
     <aside
@@ -88,14 +140,14 @@ export default function Sidebar() {
               color: "var(--accent-cyan)",
             }}
           >
-            AK
+            {initials}
           </div>
           <div>
             <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>
-              Alex Kumar
+              {userName}
             </div>
-            <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-              Post-op · Week 4
+            <div style={{ fontSize: "11px", color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "130px" }}>
+              {userRole}
             </div>
           </div>
         </div>

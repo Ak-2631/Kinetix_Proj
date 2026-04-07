@@ -5,6 +5,7 @@ import Landing from './pages/Landing.jsx'
 import Login from './pages/Login.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import DoctorDashboard from './pages/DoctorDashboard.jsx'
+import PatientProfile from './pages/PatientProfile.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import './index.css'
 
@@ -21,6 +22,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         
         <Route element={<ProtectedRoute allowedRole="doctor" />}>
           <Route path="/doctor" element={<DoctorDashboard />} />
+          <Route path="/doctor/patient/:patientId" element={<PatientProfile />} />
         </Route>
       </Routes>
     </BrowserRouter>

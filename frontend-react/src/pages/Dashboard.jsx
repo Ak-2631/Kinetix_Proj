@@ -3,7 +3,7 @@ import Sidebar from "@/components/Sidebar";
 import RehabVision from "@/components/RehabVision";
 import Gamification from "@/components/Gamification";
 import PainMap from "@/components/PainMap";
-import { Mic, MicOff, Check, Play } from "lucide-react";
+import { Mic, MicOff, Check, Play, FileText } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import "regenerator-runtime/runtime";
 import SpeechRecognition, { useSpeechRecognition } from "react-speech-recognition";
@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [routines, setRoutines] = useState([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [activeRoutine, setActiveRoutine] = useState(null);
+  const [patientProfile, setPatientProfile] = useState(null);
 
   useEffect(() => {
     const fetchRoutines = async () => {
@@ -35,6 +36,16 @@ export default function Dashboard() {
       if (data) {
          setRoutines(data);
       }
+
+      // Fetch Patient Profile & Clinical Notes
+      const { data: profile } = await supabase
+        .from('patients')
+        .select('full_name, clinical_summary')
+        .eq('id', session.user.id)
+        .single();
+        
+      if (profile) setPatientProfile(profile);
+
       setLoadingTasks(false);
     };
     
@@ -130,7 +141,7 @@ export default function Dashboard() {
                 color: "var(--text-primary)",
               }}
             >
-              Good Morning 👋
+              Good Morning{patientProfile?.full_name ? `, ${patientProfile.full_name.split(' ')[0]}` : ''} 👋
             </h1>
             <p style={{ margin: "4px 0 0", color: "var(--text-secondary)", fontSize: "15px" }}>
               Ready for your daily rehabilitation?
@@ -298,6 +309,25 @@ export default function Dashboard() {
 
           {/* Side Column */}
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+            {patientProfile?.clinical_summary && (
+              <div 
+                className="card" 
+                style={{ 
+                  padding: "24px", 
+                  background: "rgba(124, 58, 237, 0.05)", 
+                  border: "1px solid rgba(124, 58, 237, 0.2)",
+                  animation: "fadeIn 0.5s ease-out"
+                }}
+              >
+                <h3 style={{ margin: "0 0 12px", fontSize: "16px", color: "var(--accent-purple)", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <FileText size={18} /> Doctor's Clinical Notes
+                </h3>
+                <p style={{ margin: 0, fontSize: "14px", lineHeight: "1.6", color: "var(--text-secondary)" }}>
+                  {patientProfile.clinical_summary}
+                </p>
+              </div>
+            )}
+            
             <Gamification reps={sessionReps} goalReps={activeRoutine?.exercise?.target_reps || 15} />
             <PainMap />
           </div>
