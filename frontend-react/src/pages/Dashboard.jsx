@@ -3,13 +3,43 @@ import Sidebar from "@/components/Sidebar";
 import RehabVision from "@/components/RehabVision";
 import Gamification from "@/components/Gamification";
 import PainMap from "@/components/PainMap";
-import { Mic, MicOff } from "lucide-react";
+import { Mic, MicOff, Check, Play } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 import "regenerator-runtime/runtime";
 import SpeechRecognition, { useSpeechRecognition } from "react-speech-recognition";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function Dashboard() {
   const [isActive, setIsActive] = useState(false);
   const [sessionReps, setSessionReps] = useState(0);
+  const [routines, setRoutines] = useState([]);
+  const [loadingTasks, setLoadingTasks] = useState(true);
+  const [activeRoutine, setActiveRoutine] = useState(null);
+
+  useEffect(() => {
+    const fetchRoutines = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      const { data, error } = await supabase
+        .from('assigned_routines')
+        .select(`
+          id, status, assigned_date,
+          exercise:exercises_dictionary (
+            id, name, description, lucide_icon_name, target_reps, target_angle
+          )
+        `)
+        .eq('patient_id', session.user.id)
+        .eq('status', 'pending');
+        
+      if (data) {
+         setRoutines(data);
+      }
+      setLoadingTasks(false);
+    };
+    
+    fetchRoutines();
+  }, []);
 
   const {
     transcript,
@@ -21,7 +51,11 @@ export default function Dashboard() {
       {
         command: ["start my exercises", "start workout", "begin session"],
         callback: () => {
-          setIsActive(true);
+          if (routines.length > 0) {
+            startExercise(routines[0]);
+          } else {
+            setIsActive(true); 
+          }
           resetTranscript();
         },
       },
@@ -29,14 +63,40 @@ export default function Dashboard() {
         command: ["stop my exercises", "end workout", "stop session"],
         callback: () => {
           setIsActive(false);
+          setActiveRoutine(null);
           resetTranscript();
         },
       },
     ],
   });
 
+  const startExercise = (routine) => {
+    setActiveRoutine(routine);
+    setIsActive(true);
+  };
+
+  const completeRoutine = async () => {
+    if (activeRoutine) {
+      await supabase
+        .from('assigned_routines')
+        .update({ status: 'completed' })
+        .eq('id', activeRoutine.id);
+        
+      setRoutines(routines.filter(r => r.id !== activeRoutine.id));
+    }
+    setIsActive(false);
+    setActiveRoutine(null);
+    setSessionReps(0);
+  };
+
   const toggleWorkout = () => {
-    setIsActive(!isActive);
+    if (isActive) {
+      completeRoutine(); 
+    } else if (routines.length > 0) {
+      startExercise(routines[0]);
+    } else {
+      setIsActive(true);
+    }
   };
 
   const toggleVoice = () => {
@@ -70,10 +130,10 @@ export default function Dashboard() {
                 color: "var(--text-primary)",
               }}
             >
-              Good Morning, Alex 👋
+              Good Morning 👋
             </h1>
             <p style={{ margin: "4px 0 0", color: "var(--text-secondary)", fontSize: "15px" }}>
-              Ready for your daily knee rehabilitation?
+              Ready for your daily rehabilitation?
             </p>
           </div>
 
@@ -114,6 +174,17 @@ export default function Dashboard() {
             )}
 
             <button
+              onClick={async () => {
+                 await supabase.auth.signOut();
+                 window.location.href = '/';
+              }}
+              className="btn-primary"
+              style={{ background: "transparent", border: "1px solid var(--accent-red)", color: "var(--accent-red)", padding: "10px 16px" }}
+            >
+              Sign Out
+            </button>
+
+            <button
               onClick={toggleWorkout}
               className="btn-primary"
               style={{
@@ -127,7 +198,7 @@ export default function Dashboard() {
                 width: "160px",
               }}
             >
-              {isActive ? "End Workout" : "Start Workout"}
+              {isActive ? "End Protocol" : "Quick Start"}
             </button>
           </div>
         </header>
@@ -161,6 +232,64 @@ export default function Dashboard() {
         >
           {/* Main Column */}
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+            
+            {!isActive && (
+              <div className="card" style={{ padding: "24px", marginBottom: "8px" }}>
+                <h2 style={{ margin: "0 0 16px", fontSize: "20px", fontFamily: "'Space Grotesk', sans-serif" }}>Today's Routine</h2>
+                {loadingTasks ? (
+                  <div style={{ color: "var(--text-muted)", fontSize: "14px" }}>Loading your routine...</div>
+                ) : routines.length === 0 ? (
+                  <div style={{ 
+                    padding: "40px", 
+                    textAlign: "center", 
+                    background: "rgba(0, 229, 255, 0.05)", 
+                    borderRadius: "12px", 
+                    border: "1px dashed var(--border-subtle)" 
+                  }}>
+                    <Check size={40} color="var(--accent-green)" style={{ margin: "0 auto 16px" }} />
+                    <div style={{ fontSize: "18px", fontWeight: "600", color: "var(--text-primary)" }}>All caught up!</div>
+                    <div style={{ color: "var(--text-muted)", marginTop: "4px" }}>No protocols assigned for today.</div>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {routines.map((routine) => {
+                      const IconComponent = routine.exercise?.lucide_icon_name && LucideIcons[routine.exercise.lucide_icon_name] 
+                        ? LucideIcons[routine.exercise.lucide_icon_name] 
+                        : LucideIcons.Activity;
+
+                      return (
+                        <div key={routine.id} style={{
+                          display: "flex", alignItems: "center", justifyContent: "space-between",
+                          padding: "16px", background: "var(--bg-secondary)", borderRadius: "12px",
+                          border: "1px solid var(--border-subtle)",
+                          transition: "all 0.2s"
+                        }}
+                        onMouseOver={(e) => { e.currentTarget.style.borderColor = "var(--accent-cyan)"; }}
+                        onMouseOut={(e) => { e.currentTarget.style.borderColor = "var(--border-subtle)"; }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                            <div style={{ width: "48px", height: "48px", borderRadius: "10px", background: "rgba(0, 229, 255, 0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent-cyan)" }}>
+                              <IconComponent size={24} />
+                            </div>
+                            <div>
+                              <h3 style={{ margin: "0 0 4px", fontSize: "16px" }}>{routine.exercise?.name || 'Exercise Protocol'}</h3>
+                              <div style={{ fontSize: "13px", color: "var(--text-muted)" }}>
+                                {routine.exercise?.target_reps ? `${routine.exercise.target_reps} Reps Target` : 'As tolerated'}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <button onClick={() => startExercise(routine)} className="btn-primary" style={{ padding: "8px 16px", fontSize: "14px", display: "flex", alignItems: "center", gap: "8px" }}>
+                            <Play size={16} fill="currentColor" /> Start
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             <RehabVision
               isActive={isActive}
               onRepComplete={(reps) => setSessionReps(reps)}
@@ -169,7 +298,7 @@ export default function Dashboard() {
 
           {/* Side Column */}
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-            <Gamification reps={sessionReps} goalReps={15} />
+            <Gamification reps={sessionReps} goalReps={activeRoutine?.exercise?.target_reps || 15} />
             <PainMap />
           </div>
         </div>
