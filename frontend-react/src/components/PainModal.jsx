@@ -1,16 +1,8 @@
-"use client";
-
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 
-interface PainModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  bodyPart: string;
-}
-
-export default function PainModal({ isOpen, onClose, bodyPart }: PainModalProps) {
+export default function PainModal({ isOpen, onClose, bodyPart }) {
   const [pain, setPain] = useState(3);
   const [submitted, setSubmitted] = useState(false);
 

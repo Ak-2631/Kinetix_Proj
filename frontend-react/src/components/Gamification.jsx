@@ -1,20 +1,12 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactConfetti from "react-confetti";
 import { Trophy, TrendingUp } from "lucide-react";
 
-interface GamificationProps {
-  reps: number;
-  goalReps?: number;
-}
-
-export default function Gamification({ reps, goalReps = 10 }: GamificationProps) {
+export default function Gamification({ reps, goalReps = 10 }) {
   const [showConfetti, setShowConfetti] = useState(false);
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
-  const [milestone, setMilestone] = useState<number | null>(null);
-  const prevMilestoneRef = { current: 0 };
+  const [milestone, setMilestone] = useState(null);
 
   const progressPct = Math.min((reps / goalReps) * 100, 100);
   const circumference = 2 * Math.PI * 54; // radius 54

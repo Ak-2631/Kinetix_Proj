@@ -73,11 +73,6 @@ body {
   to { transform: rotate(360deg); }
 }
 
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
@@ -112,16 +107,4 @@ body {
 
 .btn-primary:active {
   transform: translateY(0);
-}
-
-.glow-text {
-  color: var(--accent-cyan);
-  text-shadow: 0 0 20px rgba(0, 229, 255, 0.5);
-}
-
-.gradient-text {
-  background: linear-gradient(135deg, #00e5ff, #7c3aed);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }

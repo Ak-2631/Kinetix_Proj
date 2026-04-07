@@ -1,7 +1,4 @@
-"use client";
-
 import { useState } from "react";
-import { motion } from "framer-motion";
 import PainModal from "./PainModal";
 
 const bodyParts = [
@@ -15,9 +12,9 @@ const bodyParts = [
 export default function PainMap() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPart, setSelectedPart] = useState("");
-  const [hoveredPart, setHoveredPart] = useState<string | null>(null);
+  const [hoveredPart, setHoveredPart] = useState(null);
 
-  const handleClick = (part: { id: string; label: string; active: boolean }) => {
+  const handleClick = (part) => {
     if (part.active) {
       setSelectedPart(part.label);
       setModalOpen(true);

@@ -1,26 +1,19 @@
-"use client";
-
 import { useEffect, useRef, useState, useCallback } from "react";
 import Webcam from "react-webcam";
 import { calculateAngle } from "@/lib/utils";
 import { FilesetResolver, PoseLandmarker } from "@mediapipe/tasks-vision";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, CameraOff, Play, Square, Zap } from "lucide-react";
+import { Camera, Zap } from "lucide-react";
 
-interface RehabVisionProps {
-  isActive: boolean;
-  onRepComplete: (reps: number) => void;
-}
-
-export default function RehabVision({ isActive, onRepComplete }: RehabVisionProps) {
-  const webcamRef = useRef<Webcam>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const poseLandmarkerRef = useRef<PoseLandmarker | null>(null);
-  const animFrameRef = useRef<number | null>(null);
-  const lastRepStateRef = useRef<"up" | "down">("up");
+export default function RehabVision({ isActive, onRepComplete }) {
+  const webcamRef = useRef(null);
+  const canvasRef = useRef(null);
+  const poseLandmarkerRef = useRef(null);
+  const animFrameRef = useRef(null);
+  const lastRepStateRef = useRef("up");
 
   const [reps, setReps] = useState(0);
-  const [angle, setAngle] = useState<number | null>(null);
+  const [angle, setAngle] = useState(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [modelLoaded, setModelLoaded] = useState(false);
@@ -63,12 +56,7 @@ export default function RehabVision({ isActive, onRepComplete }: RehabVisionProp
   }, []);
 
   const drawSkeleton = useCallback(
-    (
-      ctx: CanvasRenderingContext2D,
-      landmarks: { x: number; y: number; z: number; visibility?: number }[],
-      width: number,
-      height: number
-    ) => {
+    (ctx, landmarks, width, height) => {
       // Connection pairs for skeleton
       const connections = [
         [11, 12], [11, 13], [13, 15], [12, 14], [14, 16],
@@ -122,7 +110,7 @@ export default function RehabVision({ isActive, onRepComplete }: RehabVisionProp
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d")!;
+    const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (landmarker) {
@@ -153,7 +141,7 @@ export default function RehabVision({ isActive, onRepComplete }: RehabVisionProp
               lastRepStateRef.current = "up";
               repsRef.current += 1;
               setReps(repsRef.current);
-              onRepComplete(repsRef.current);
+              if (onRepComplete) onRepComplete(repsRef.current);
               setFeedback(`✅ Rep ${repsRef.current} complete!`);
             } else if (kneeAngle >= 90 && kneeAngle <= 150) {
               setFeedback("⬇️ Bend deeper — aim for < 90°");
@@ -164,7 +152,7 @@ export default function RehabVision({ isActive, onRepComplete }: RehabVisionProp
         // skip frame on error
       }
     } else {
-      // Simulation mode: draw guide circle
+      // Simulation mode
       ctx.beginPath();
       ctx.arc(canvas.width / 2, canvas.height / 2, 60, 0, 2 * Math.PI);
       ctx.strokeStyle = "rgba(0, 229, 255, 0.3)";
@@ -193,35 +181,12 @@ export default function RehabVision({ isActive, onRepComplete }: RehabVisionProp
 
   return (
     <div className="card" style={{ padding: "24px" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          marginBottom: "16px",
-        }}
-      >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
         <div>
-          <div
-            style={{
-              fontSize: "11px",
-              color: "var(--accent-cyan)",
-              letterSpacing: "1.5px",
-              fontWeight: 600,
-              marginBottom: "4px",
-            }}
-          >
+          <div style={{ fontSize: "11px", color: "var(--accent-cyan)", letterSpacing: "1.5px", fontWeight: 600, marginBottom: "4px" }}>
             VISION ANALYSIS
           </div>
-          <h3
-            style={{
-              margin: 0,
-              fontSize: "16px",
-              fontWeight: 700,
-              fontFamily: "'Space Grotesk', sans-serif",
-              color: "var(--text-primary)",
-            }}
-          >
+          <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", color: "var(--text-primary)" }}>
             RehabVision™
           </h3>
         </div>
@@ -239,9 +204,7 @@ export default function RehabVision({ isActive, onRepComplete }: RehabVisionProp
               gap: "6px",
               padding: "5px 10px",
               borderRadius: "20px",
-              background: isActive
-                ? "rgba(16, 185, 129, 0.1)"
-                : "rgba(100, 100, 120, 0.1)",
+              background: isActive ? "rgba(16, 185, 129, 0.1)" : "rgba(100, 100, 120, 0.1)",
               border: `1px solid ${isActive ? "rgba(16,185,129,0.4)" : "var(--border-subtle)"}`,
               fontSize: "11px",
               fontWeight: 600,
@@ -262,177 +225,58 @@ export default function RehabVision({ isActive, onRepComplete }: RehabVisionProp
         </div>
       </div>
 
-      {/* Camera feed */}
-      <div
-        style={{
-          position: "relative",
-          borderRadius: "12px",
-          overflow: "hidden",
-          background: "#060d1a",
-          border: "1px solid var(--border-subtle)",
-          aspectRatio: "16/9",
-        }}
-      >
+      <div style={{ position: "relative", borderRadius: "12px", overflow: "hidden", background: "#060d1a", border: "1px solid var(--border-subtle)", aspectRatio: "16/9" }}>
         <Webcam
           ref={webcamRef}
           audio={false}
           mirrored
           onUserMedia={() => setCameraReady(true)}
           onUserMediaError={() => setFeedback("Camera access denied")}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            transform: "scaleX(-1)",
-            opacity: cameraReady ? 1 : 0,
-          }}
+          style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)", opacity: cameraReady ? 1 : 0 }}
           videoConstraints={{ facingMode: "user" }}
         />
-        <canvas
-          ref={canvasRef}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            transform: "scaleX(-1)",
-          }}
-        />
+        <canvas ref={canvasRef} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", transform: "scaleX(-1)" }} />
 
-        {/* Loading overlay */}
         {!cameraReady && (
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "12px",
-              background: "#060d1a",
-            }}
-          >
+          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", background: "#060d1a" }}>
             <Camera size={40} color="var(--text-muted)" />
-            <p style={{ color: "var(--text-muted)", fontSize: "14px", margin: 0 }}>
-              Requesting camera access…
-            </p>
+            <p style={{ color: "var(--text-muted)", fontSize: "14px", margin: 0 }}>Requesting camera access…</p>
           </div>
         )}
 
-        {/* Scan line when active */}
         {isActive && cameraReady && (
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              height: "2px",
-              background:
-                "linear-gradient(90deg, transparent, rgba(0, 229, 255, 0.6), transparent)",
-              animation: "scan-line 2.5s linear infinite",
-            }}
-          />
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "linear-gradient(90deg, transparent, rgba(0, 229, 255, 0.6), transparent)", animation: "scan-line 2.5s linear infinite" }} />
         )}
 
-        {/* Corner brackets */}
-        {["top-left", "top-right", "bottom-left", "bottom-right"].map((pos) => (
-          <div
-            key={pos}
-            style={{
-              position: "absolute",
-              width: "20px",
-              height: "20px",
-              borderColor: "rgba(0, 229, 255, 0.5)",
-              borderStyle: "solid",
-              borderWidth: 0,
-              ...(pos.includes("top") ? { top: "8px", borderTopWidth: "2px" } : { bottom: "8px", borderBottomWidth: "2px" }),
-              ...(pos.includes("left") ? { left: "8px", borderLeftWidth: "2px" } : { right: "8px", borderRightWidth: "2px" }),
-            }}
-          />
-        ))}
-
-        {/* Angle badge */}
         {angle !== null && isActive && (
-          <div
-            style={{
-              position: "absolute",
-              bottom: "12px",
-              left: "12px",
-              background: "rgba(5, 11, 24, 0.85)",
-              border: "1px solid var(--border-glow)",
-              borderRadius: "8px",
-              padding: "6px 12px",
-              backdropFilter: "blur(8px)",
-            }}
-          >
+          <div style={{ position: "absolute", bottom: "12px", left: "12px", background: "rgba(5, 11, 24, 0.85)", border: "1px solid var(--border-glow)", borderRadius: "8px", padding: "6px 12px", backdropFilter: "blur(8px)" }}>
             <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>KNEE ANGLE </span>
-            <span
-              style={{
-                fontSize: "16px",
-                fontWeight: 700,
-                color: angle < 90 ? "var(--accent-green)" : "var(--accent-cyan)",
-                fontFamily: "'Space Grotesk', sans-serif",
-              }}
-            >
+            <span style={{ fontSize: "16px", fontWeight: 700, color: angle < 90 ? "var(--accent-green)" : "var(--accent-cyan)", fontFamily: "'Space Grotesk', sans-serif" }}>
               {angle}°
             </span>
           </div>
         )}
       </div>
 
-      {/* Feedback bar */}
       <AnimatePresence mode="wait">
         <motion.div
           key={feedback}
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0 }}
-          style={{
-            marginTop: "12px",
-            padding: "10px 14px",
-            borderRadius: "8px",
-            background: "rgba(0, 229, 255, 0.05)",
-            border: "1px solid var(--border-subtle)",
-            fontSize: "13px",
-            color: "var(--text-secondary)",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
+          style={{ marginTop: "12px", padding: "10px 14px", borderRadius: "8px", background: "rgba(0, 229, 255, 0.05)", border: "1px solid var(--border-subtle)", fontSize: "13px", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "8px" }}
         >
           <Zap size={14} color="var(--accent-cyan)" />
           {feedback}
         </motion.div>
       </AnimatePresence>
 
-      {/* Rep counter */}
-      <div
-        style={{
-          marginTop: "12px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "20px",
-        }}
-      >
+      <div style={{ marginTop: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "20px" }}>
         <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              fontSize: "40px",
-              fontWeight: 800,
-              fontFamily: "'Space Grotesk', sans-serif",
-              color: "var(--accent-cyan)",
-              lineHeight: 1,
-            }}
-          >
+          <div style={{ fontSize: "40px", fontWeight: 800, fontFamily: "'Space Grotesk', sans-serif", color: "var(--accent-cyan)", lineHeight: 1 }}>
             {reps}
           </div>
-          <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
-            REPS TODAY
-          </div>
+          <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>REPS TODAY</div>
         </div>
       </div>
     </div>

@@ -1,9 +1,5 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Activity, LayoutDashboard, Stethoscope, HeartPulse, Settings } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Link, useLocation } from "react-router-dom";
+import { Activity, LayoutDashboard, Stethoscope, HeartPulse } from "lucide-react";
 
 const navItems = [
   { href: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -11,7 +7,8 @@ const navItems = [
 ];
 
 export default function Sidebar() {
-  const pathname = usePathname();
+  const location = useLocation();
+  const pathname = location.pathname;
 
   return (
     <aside
@@ -111,7 +108,7 @@ export default function Sidebar() {
           return (
             <Link
               key={href}
-              href={href}
+              to={href}
               style={{
                 display: "flex",
                 alignItems: "center",

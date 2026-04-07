@@ -1,37 +1,74 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import { FileText, Cpu, User, Calendar, Activity } from "lucide-react";
 import { motion } from "framer-motion";
 
-interface PatientData {
-  summary: string;
-  generatedAt: string;
-  model: string;
-  patient: string;
-  rawData: any;
+// Mock API generation logic directly in the frontend component instead of Next.js Route
+function generateClinicalSummary(data) {
+  const {
+    patientName = "Patient",
+    weeklyReps = 0,
+    painLevels = [],
+    sessionCount = 0,
+  } = data;
+
+  const avgPain =
+    painLevels.length > 0
+      ? (painLevels.reduce((a, b) => a + b, 0) / painLevels.length).toFixed(1)
+      : "N/A";
+
+  const painTrend =
+    painLevels.length >= 2
+      ? painLevels[painLevels.length - 1] < painLevels[0]
+        ? "showing improvement"
+        : "requiring attention"
+      : "within expected parameters";
+
+  const repStatus =
+    weeklyReps >= 60
+      ? "exceeding targets"
+      : weeklyReps >= 30
+      ? "meeting targets"
+      : "below targets for the week";
+
+  return (
+    `${patientName} completed ${weeklyReps} rehabilitation repetitions across ${sessionCount} sessions this week, ${repStatus}. ` +
+    `Pain levels averaged ${avgPain}/10 and are ${painTrend}, suggesting the current protocol should ${
+      painLevels.length > 0 && Number(avgPain) > 6
+        ? "be reviewed by the supervising physician before advancing"
+        : "continue with progressive resistance as tolerated"
+    }.`
+  );
 }
 
 export default function DoctorDashboard() {
-  const [data, setData] = useState<PatientData | null>(null);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchSummary = async () => {
-      try {
-        const response = await fetch("/api/summary");
-        if (!response.ok) throw new Error("Failed to fetch data");
-        const result = await response.json();
-        setData(result);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchSummary();
+    // Simulate API fetch delay
+    const timer = setTimeout(() => {
+      const demoData = {
+        patientName: "Alex Kumar",
+        weeklyReps: 72,
+        painLevels: [6, 5, 5, 4, 4, 3, 3],
+        sessionCount: 5,
+      };
+
+      const summary = generateClinicalSummary(demoData);
+
+      setData({
+        summary,
+        generatedAt: new Date().toISOString(),
+        model: "kinetix-clinical-v1 (browser mock)",
+        patient: demoData.patientName,
+        rawData: demoData,
+      });
+
+      setLoading(false);
+    }, 1200);
+
+    return () => clearTimeout(timer);
   }, []);
 
   return (
@@ -77,10 +114,6 @@ export default function DoctorDashboard() {
           <div style={{ display: "flex", gap: "10px", alignItems: "center", color: "var(--text-muted)" }}>
             <div className="spinner" style={{ width: "20px", height: "20px", border: "2px solid rgba(0,229,255,0.2)", borderTopColor: "var(--accent-cyan)", borderRadius: "50%", animation: "spin-slow 1s linear infinite" }} />
             Analyzing patient data...
-          </div>
-        ) : error ? (
-          <div style={{ padding: "20px", background: "rgba(239,68,68,0.1)", color: "var(--accent-red)", borderRadius: "12px", border: "1px solid rgba(239,68,68,0.3)" }}>
-            Error: {error}
           </div>
         ) : data ? (
           <motion.div
@@ -143,7 +176,7 @@ export default function DoctorDashboard() {
               <div style={{ background: "var(--bg-secondary)", padding: "16px", borderRadius: "12px" }}>
                 <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "4px" }}>Avg Pain (1-10)</div>
                 <div style={{ fontSize: "24px", fontWeight: "bold", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {data.rawData?.painLevels?.length > 0 ? (data.rawData.painLevels.reduce((a: number, b: number) => a + b, 0) / data.rawData.painLevels.length).toFixed(1) : "N/A"}
+                  {data.rawData?.painLevels?.length > 0 ? (data.rawData.painLevels.reduce((a, b) => a + b, 0) / data.rawData.painLevels.length).toFixed(1) : "N/A"}
                 </div>
               </div>
               <div style={{ background: "var(--bg-secondary)", padding: "16px", borderRadius: "12px" }}>

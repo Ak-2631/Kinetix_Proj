@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import RehabVision from "@/components/RehabVision";
@@ -12,11 +10,6 @@ import SpeechRecognition, { useSpeechRecognition } from "react-speech-recognitio
 export default function Dashboard() {
   const [isActive, setIsActive] = useState(false);
   const [sessionReps, setSessionReps] = useState(0);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const {
     transcript,
@@ -53,8 +46,6 @@ export default function Dashboard() {
       SpeechRecognition.startListening({ continuous: true });
     }
   };
-
-  if (!mounted) return null;
 
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
